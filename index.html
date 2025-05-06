@@ -1,12 +1,1193 @@
 <!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://fonts.googleapis.com; worker-src 'self' blob:; img-src 'self' https:; media-src 'self';">
+    <title>ระบบร้องขอเบิกอะไหล่จากคลังนวนคร</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Itim&family=Prompt:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html { font-size: 16px; }
+        html, body { transform: none !important; zoom: 1 !important; }
+        body {
+            font-family: 'Itim', sans-serif;
+            width: 100vw;
+            min-width: 100vw;
+            margin: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 100vw;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        .tabs-container {
+            width: 100vw;
+            margin-left: calc(-8px);
+            margin-right: calc(-8px);
+        }
+        .grand-title {
+            font-family: 'Prompt', sans-serif;
+            font-weight: 700;
+            text-align: center;
+            background: linear-gradient(45deg, #1e3a8a, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 16px 0;
+            line-height: 1.2;
+        }
+        .tabs { 
+            display: flex; 
+            flex-wrap: nowrap; 
+            gap: 4px; 
+            margin-bottom: 16px; 
+            white-space: nowrap; 
+        }
+        .tab-button {
+            width: calc((100% - 8px) / 3);
+            min-height: 96px;
+            padding: 16px 8px;
+            text-align: center;
+            box-sizing: border-box;
+            color: #1f2937;
+            border-radius: 8px;
+            font-family: 'Prompt', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+            white-space: normal;
+            text-wrap: balance;
+            line-height: 1.2;
+            cursor: pointer;
+        }
+        #tab-main {
+            background: #b3e5fc;
+        }
+        #tab-main.active {
+            background: #81d4fa;
+            transform: translateY(2px);
+            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        #tab-requesttoday {
+            background: #c8e6c9;
+        }
+        #tab-requesttoday.active {
+            background: #a5d6a7;
+            transform: translateY(2px);
+            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        #tab-requestall {
+            background: #ffcdd2;
+        }
+        #tab-requestall.active {
+            background: #ef9a9a;
+            transform: translateY(2px);
+            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .tab-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 4px 4px 6px rgba(0, 0, 0, 0.3);
+            filter: brightness(1.1);
+        }
+        .table-container { 
+            width: 100%;
+            min-width: 100%;
+            max-height: 500px; 
+            overflow-y: auto; 
+            overflow-x: auto; 
+        }
+        th, td { 
+            padding: 8px; 
+            border: 1px solid #d1d5db; 
+            line-height: 1.2; 
+            white-space: nowrap; 
+            font-size: 0.875rem;
+        }
+        table { 
+            border-collapse: collapse; 
+            min-width: fit-content; 
+        }
+        th { background-color: #2563eb; color: white; }
+        td.rebuilt, td.note { color: red; font-weight: bold; }
+        td.unrestricted {
+            color: #2563eb;
+            font-weight: 700;
+            text-align: center;
+        }
+        td.vibhavadi {
+            color: #15803d;
+            font-weight: 700;
+            text-align: center;
+        }
+        .material-vibhavadi, .description-vibhavadi {
+            color: #15803d;
+            font-weight: 700;
+        }
+        .material-unrestricted, .description-unrestricted {
+            color: #2563eb;
+            font-weight: 700;
+        }
+        .error-message { 
+            color: #dc2626; 
+            text-align: center; 
+            margin-bottom: 10px; 
+            font-size: 0.875rem;
+        }
+        .success-message { 
+            color: #16a34a; 
+            text-align: center; 
+            margin-bottom: 10px; 
+            font-size: 0.875rem;
+        }
+        .spinner-container {
+            text-align: center;
+            padding: 60px 20px;
+            color: #007bff;
+            font-size: 1.125rem;
+        }
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #e0e0e0;
+            border-top: 6px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .pagination { 
+            display: flex; 
+            justify-content: center; 
+            gap: 8px; 
+            margin-top: 10px; 
+        }
+        .pagination button { 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            background: #3b82f6; 
+            color: white; 
+            font-size: 1rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); 
+        }
+        .pagination button:disabled { 
+            background: #d1d5db; 
+            cursor: not-allowed; 
+            box-shadow: none; 
+        }
+        .pagination button.active { 
+            background: #f97316; 
+            font-weight: bold; 
+        }
+        .dialog, .alert-dialog { 
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white; 
+            border: 1px solid #ccc; 
+            padding: 20px; 
+            border-radius: 8px; 
+            width: 95%; 
+            max-width: 90vw; 
+            max-height: 80vh; 
+            overflow-y: auto; 
+            z-index: 10000;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        #requestDialog, #successAlert {
+            padding: 16px;
+        }
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+        }
+        .dialog input, .dialog select, .dialog button, .alert-dialog button { 
+            width: 100%; 
+            padding: 10px; 
+            margin: 8px 0; 
+            font-size: 1rem; 
+            min-height: 40px; 
+            border-radius: 4px; 
+            border: 1px solid #d1d5db;
+            color: #000;
+            overflow-wrap: break-word;
+            line-height: 1.4;
+            font-family: 'Itim', sans-serif;
+        }
+        #requestDialog input, #requestDialog select, #requestDialog button, #successAlert button {
+            min-height: 36px;
+        }
+        .dialog input[readonly] { background-color: #e2e8f0; }
+        #dialogQuantity { background-color: #d4f4e2; }
+        #dialogEmployeeId { background-color: #d1e7ff; }
+        #dialogTeam { background-color: #ffe1e9; }
+        #dialogContact { background-color: #e6e0fa; }
+        #dialogCallNumber { background-color: #fef3c7; }
+        #dialogCallType { background-color: #d8b4fe; }
+        .dialog input:focus, .dialog select:focus { 
+            outline: none; 
+            border-color: #f97316; 
+            box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2); 
+        }
+        .alert-dialog button { 
+            background: #3b82f6; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+        }
+        .alert-dialog button:hover { 
+            background: #1e40af; 
+        }
+        .no-data-message { color: gray; text-align: center; padding: 10px; }
+        .iframe-container { position: relative; width: 100%; height: 600px; }
+        .iframe-container iframe { width: 100%; height: 100%; border: none; }
+        .iframe-loading, .iframe-error, .iframe-timeout { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            color: blue; 
+            font-size: 1.125rem;
+            text-align: center;
+        }
+        .iframe-error { color: red; }
+        .iframe-timeout { color: #f97316; }
+        .iframe-timeout button {
+            margin-top: 10px;
+            background: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .iframe-timeout button:hover {
+            background: #1e40af;
+        }
+        .action-btn {
+            background: #f9a8d4;
+            color: #1f2937;
+            padding: 6px 8px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Prompt', sans-serif;
+            font-weight: 600;
+            font-size: 0.875rem;
+            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .action-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 4px rgba(249, 168, 212, 0.8);
+        }
+        .action-btn:active {
+            animation: pulse 0.3s ease;
+        }
+        .view-image-btn {
+            background: #fbcfe8;
+            color: #1f2937;
+            padding: 4px 6px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Prompt', sans-serif;
+            font-weight: 500;
+            font-size: 0.75rem;
+            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .view-image-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 4px rgba(191, 219, 254, 0.8);
+        }
+        .view-image-btn:active {
+            animation: pulse 0.3s ease;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        #searchMain {
+            width: 100%;
+            max-width: 280px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 12px 12px 12px 40px;
+            margin-bottom: 16px;
+            font-size: 1rem;
+            background-color: #ffffff;
+            border: 2px solid #1e3a8a;
+            border-radius: 8px;
+            box-sizing: border-box;
+            color: #1f2937;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%234b5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+            background-repeat: no-repeat;
+            background-position: 10px center;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        #searchMain:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        #searchMain::placeholder {
+            color: #4b5563;
+            font-weight: 600;
+        }
+        #searchMain:focus {
+            outline: none;
+            border-color: #ea580c;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+        th.material { width: 120px; }
+        th.description { max-width: 250px; }
+        th.unrestricted, th.vibhavadi, th.rebuilt, th.note, th.product, th.ocrtaxt { width: 100px; }
+        th.image { width: 80px; }
+        th.action { width: 100px; }
+        @media (min-width: 640px) {
+            html { font-size: 16px; }
+            .tabs-container { width: 100%; margin-left: 0; margin-right: 0; }
+            .tabs { width: 100%; }
+            .tab-button {
+                width: calc((100% - 8px) / 3);
+                min-height: 96px;
+                padding: 16px 8px;
+                font-size: 1.5rem;
+                line-height: 1.2;
+                color: #1f2937;
+            }
+            th, td { font-size: 1rem; }
+            .dialog, .alert-dialog { max-width: 90vw; max-height: 80vh; }
+            #requestDialog {
+                max-width: 600px;
+                max-height: 600px;
+            }
+            #successAlert {
+                max-width: 400px;
+                max-height: 300px;
+            }
+            .grand-title {
+                font-size: 3.75rem;
+                letter-spacing: 0.05em;
+            }
+            .action-btn {
+                padding: 6px 8px;
+                font-size: 0.875rem;
+            }
+            .view-image-btn {
+                padding: 4px 6px;
+                font-size: 0.875rem;
+            }
+        }
+        @media (max-width: 639px) {
+            html { font-size: 22px; }
+            .tabs { flex-direction: row; gap: 4px; }
+            .tab-button {
+                font-size: 1.636rem;
+                padding: 16px 8px;
+                min-height: 120px;
+                border-radius: 8px;
+                line-height: 1.2;
+                color: #1f2937;
+            }
+            #tab-main {
+                background: #b3e5fc;
+            }
+            #tab-main.active {
+                background: #81d4fa;
+            }
+            #tab-requesttoday {
+                background: #c8e6c9;
+            }
+            #tab-requesttoday.active {
+                background: #a5d6a7;
+            }
+            #tab-requestall {
+                background: #ffcdd2;
+            }
+            #tab-requestall.active {
+                background: #ef9a9a;
+            }
+            table { table-layout: auto; min-width: fit-content; }
+            th, td { 
+                font-size: 1.125rem; 
+                white-space: nowrap; 
+            }
+            th.action, td.action { width: 80px; }
+            th.material, td.material { width: 100px; }
+            th.description, td.description { min-width: 200px; }
+            th.unrestricted, td.unrestricted,
+            th.vibhavadi, td.vibhavadi, 
+            th.rebuilt, td.rebuilt, 
+            th.note, td.note,
+            th.product, td.product, 
+            th.ocrtaxt, td.ocrtaxt, 
+            th.image, td.image { display: none; }
+            #searchMain { 
+                width: 90%;
+                max-width: 324px;
+                font-size: 0.875rem; 
+                padding: 12px 12px 12px 40px;
+                min-height: 48px;
+                background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%234b5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+                background-repeat: no-repeat;
+                background-position: 10px center;
+            }
+            .pagination button { font-size: 1.25rem; width: 2.75rem; height: 2.75rem; }
+            .dialog input, .dialog select, .dialog button, .alert-dialog button { font-size: 1.25rem; padding: 0.75rem; }
+            .dialog h2 { font-size: 1.75rem; }
+            .success-message, .error-message, .iframe-timeout { font-size: 1.25rem; }
+            .spinner { width: 80px; height: 80px; border-width: 8px; }
+            .spinner-container p { font-size: 1.25rem; }
+            .grand-title {
+                font-size: 2.5rem;
+                margin: 12px 0;
+            }
+            .action-btn {
+                font-size: 0.591rem;
+                padding: 4px 6px;
+            }
+            .view-image-btn {
+                font-size: 0.545rem;
+                padding: 4px 6px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="browserPrompt" class="text-center p-2 bg-yellow-100 text-sm hidden">
+        <p>เพื่อประสบการณ์ที่ดีที่สุด กรุณาเปิดใน <a href="#" onclick="openInBrowser()">Chrome หรือ Safari</a></p>
+    </div>
+    <div class="container mx-auto">
+        <h1 class="grand-title">ระบบร้องขอเบิกอะไหล่จากคลังนวนคร</h1>
+        <div class="tabs-container">
+            <div class="tabs">
+                <button id="tab-main" class="tab-button" onclick="openTab('main')">ค้นหารายการเบิก</button>
+                <button id="tab-requesttoday" class="tab-button active" onclick="openTab('requesttoday')">รายการเบิกวันนี้</button>
+                <button id="tab-requestall" class="tab-button" onclick="openTab('requestall')">ประวัติการขอเบิกทั้งหมด</button>
+            </div>
+        </div>
 
-<html>
-   <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-      <base target="_top">
-   </head>
-   <body>
-      <iframe style="position: absolute;top: 0;left: 0;width: 100%;height: 100%;border: 0;" src=https://script.google.com/macros/s/AKfycbxGmTUL_GSb7v6ehUhk1jj32IYiKfv00HfJ627Cby7fyClr2VNmh4rYYDFhzx1HzhsNpQ/exec"></iframe>
-   </body>
+        <!-- Tab 2: MainSap -->
+        <div id="main" class="tab-content hidden">
+            <input type="text" id="searchMain" class="w-full p-3 mb-4 border rounded text-base" placeholder="ค้นหาอะไหล่แล้วกด Enter">
+            <div id="mainError" class="error-message hidden"></div>
+            <div id="loading" class="spinner-container hidden">
+                <div class="spinner"></div>
+                <p>กำลังโหลดข้อมูล...</p>
+            </div>
+            <div class="table-container">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th class="action">Action</th>
+                            <th class="material">Material</th>
+                            <th class="description">Description</th>
+                            <th class="unrestricted">นวนคร</th>
+                            <th class="vibhavadi">วิภาวดี</th>
+                            <th class="rebuilt">Rebuilt</th>
+                            <th class="note">หมายเหตุ</th>
+                            <th class="product">Product</th>
+                            <th class="image">รูปภาพ</th>
+                            <th class="ocrtaxt">Spec</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mainTable"></tbody>
+                </table>
+            </div>
+            <div id="mainPagination" class="pagination"></div>
+        </div>
+
+        <!-- Tab 3: Requesttoday -->
+        <div id="requesttoday" class="tab-content">
+            <div class="iframe-container">
+                <div id="requesttodayLoading" class="iframe-loading">กำลังโหลดหน้าเว็บ...</div>
+                <div id="requesttodayError" class="iframe-error hidden">ไม่สามารถโหลดหน้าเว็บได้ กรุณาตรวจสอบ URL หรือการตั้งค่า</div>
+                <div id="requesttodayTimeout" class="iframe-timeout hidden">
+                    <p>การโหลดหน้าเว็บใช้เวลานานเกินไป</p>
+                    <button onclick="reloadRequesttodayIframe()">ลองใหม่</button>
+                </div>
+                <iframe id="requesttodayIframe" src="https://chief-abaft-sidecar.glitch.me/" onload="onIframeLoad('requesttoday')" onerror="onIframeError('requesttoday')"></iframe>
+            </div>
+        </div>
+
+        <!-- Tab 4: RequestAll -->
+        <div id="requestall" class="tab-content hidden">
+            <div class="iframe-container">
+                <div id="requestallLoading" class="iframe-loading">กำลังโหลดหน้าเว็บ...</div>
+                <div id="requestallError" class="iframe-error hidden">ไม่สามารถโหลดหน้าเว็บได้ กรุณาตรวจสอบ URL หรือการตั้งค่า</div>
+                <div id="requestallTimeout" class="iframe-timeout hidden">
+                    <p>การโหลดหน้าเว็บใช้เวลานานเกินไป</p>
+                    <button onclick="reloadRequestallIframe()">ลองใหม่</button>
+                </div>
+                <iframe src="https://octagonal-hallowed-sneeze.glitch.me/" onload="onIframeLoad('requestall')" onerror="onIframeError('requestall')"></iframe>
+            </div>
+        </div>
+
+        <!-- Popup Dialog for Request -->
+        <dialog id="requestDialog" class="dialog">
+            <h2 class="text-lg sm:text-xl font-bold mb-4">เบิกอะไหล่</h2>
+            <div>
+                <label>Material</label>
+                <input type="text" id="dialogMaterial" readonly>
+                <label>Description</label>
+                <input type="text" id="dialogDescription" readonly>
+                <label>จำนวน</label>
+                <input type="number" id="dialogQuantity" min="1" required>
+                <label>รหัสพนักงาน</label>
+                <input type="text" id="dialogEmployeeId" list="employeeIdHistory" required>
+                <datalist id="employeeIdHistory"></datalist>
+                <label>ทีม</label>
+                <input type="text" id="dialogTeam" list="teamHistory" required>
+                <datalist id="teamHistory"></datalist>
+                <label>เบอร์ติดต่อ</label>
+                <input type="text" id="dialogContact" list="contactHistory" required>
+                <datalist id="contactHistory"></datalist>
+                <label>Call Number</label>
+                <input type="text" id="dialogCallNumber" list="callNumberHistory" required>
+                <datalist id="callNumberHistory"></datalist>
+                <label>Call Type</label>
+                <select id="dialogCallType" required>
+                    <option value="" disabled selected>เลือก Call Type</option>
+                    <option value="I">I</option>
+                    <option value="P">P</option>
+                    <option value="Q">Q</option>
+                    <option value="R">R</option>
+                </select>
+            </div>
+            <div id="dialogError" class="error-message hidden"></div>
+            <div id="dialogSuccess" class="success-message hidden"></div>
+            <div class="flex gap-4 mt-4">
+                <button class="bg-blue-500 text-white py-3 px-4 rounded text-base" onclick="submitRequest()">ยืนยัน</button>
+                <button class="bg-gray-500 text-white py-3 px-4 rounded text-base" onclick="closeDialog()">ยกเลิก</button>
+            </div>
+        </dialog>
+
+        <!-- Success Alert Dialog -->
+        <dialog id="successAlert" class="alert-dialog">
+            <p class="text-lg text-center mb-4">💖เราได้รับข้อมูลร้องขอแล้ว ขอบคุณค่ะ✨</p>
+            <button onclick="closeSuccessAlert()">OK💖</button>
+        </dialog>
+    </div>
+
+    <script>
+        let mainData = [];
+        const rowsPerPage = 20;
+        let currentMainPage = 1;
+        const searchColumns = ['Material', 'Description', 'Rebuilt', 'หมายเหตุ', 'Product', 'OCRTAXT'];
+        let isIframeLoading = false;
+        let iframeLoadTimeout;
+
+        function isValidUrl(str) {
+            try {
+                new URL(str);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+
+        function isInAppBrowser() {
+            const ua = navigator.userAgent;
+            return ua.includes('Messenger') || ua.includes('FBAN') || ua.includes('FBAV');
+        }
+
+        function openInBrowser() {
+            const url = window.location.href;
+            window.open(url, '_system');
+        }
+
+        function forceFullScreen() {
+            if (window.innerWidth < 640) {
+                document.documentElement.style.zoom = '1';
+                document.body.style.width = window.innerWidth + 'px';
+            }
+        }
+
+        function openTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.getElementById(tabName).classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            if (tabName === 'main') {
+                if (mainData.length > 0) {
+                    displayMainData();
+                } else {
+                    document.getElementById('loading').classList.remove('hidden');
+                    fetchMainData();
+                }
+            } else if (tabName === 'requesttoday') {
+                debouncedReloadIframe();
+            } else if (tabName === 'requestall') {
+                const iframe = document.querySelector('#requestall iframe');
+                if (iframe && !iframe.src) {
+                    reloadRequestallIframe();
+                }
+            }
+        }
+
+        function onIframeLoad(tab) {
+            clearTimeout(iframeLoadTimeout);
+            isIframeLoading = false;
+            document.getElementById(`${tab}Loading`).classList.add('hidden');
+            document.getElementById(`${tab}Error`).classList.add('hidden');
+            document.getElementById(`${tab}Timeout`).classList.add('hidden');
+        }
+
+        function onIframeError(tab) {
+            clearTimeout(iframeLoadTimeout);
+            isIframeLoading = false;
+            document.getElementById(`${tab}Loading`).classList.add('hidden');
+            document.getElementById(`${tab}Error`).classList.remove('hidden');
+            document.getElementById(`${tab}Timeout`).classList.add('hidden');
+        }
+
+        function showIframeTimeout(tab) {
+            isIframeLoading = false;
+            document.getElementById(`${tab}Loading`).classList.add('hidden');
+            document.getElementById(`${tab}Error`).classList.add('hidden');
+            document.getElementById(`${tab}Timeout`).classList.remove('hidden');
+        }
+
+        function reloadRequesttodayIframe() {
+            if (isIframeLoading) return;
+            isIframeLoading = true;
+
+            const iframe = document.getElementById('requesttodayIframe');
+            if (!iframe) {
+                isIframeLoading = false;
+                return;
+            }
+
+            const newIframe = iframe.cloneNode();
+            iframe.parentNode.replaceChild(newIframe, iframe);
+            
+            document.getElementById('requesttodayLoading').classList.remove('hidden');
+            document.getElementById('requesttodayError').classList.add('hidden');
+            document.getElementById('requesttodayTimeout').classList.add('hidden');
+
+            newIframe.src = 'https://chief-abaft-sidecar.glitch.me/';
+            iframeLoadTimeout = setTimeout(() => showIframeTimeout('requesttoday'), 10000);
+        }
+
+        function reloadRequestallIframe() {
+            if (isIframeLoading) return;
+            isIframeLoading = true;
+
+            const iframe = document.querySelector('#requestall iframe');
+            if (!iframe) {
+                isIframeLoading = false;
+                return;
+            }
+
+            const newIframe = iframe.cloneNode();
+            iframe.parentNode.replaceChild(newIframe, iframe);
+            
+            document.getElementById('requestallLoading').classList.remove('hidden');
+            document.getElementById('requestallError').classList.add('hidden');
+            document.getElementById('requestallTimeout').classList.add('hidden');
+
+            newIframe.src = 'https://octagonal-hallowed-sneeze.glitch.me/';
+            iframeLoadTimeout = setTimeout(() => showIframeTimeout('requestall'), 10000);
+        }
+
+        const debouncedReloadIframe = debounce(() => reloadRequesttodayIframe(), 500);
+
+        async function fetchMainData() {
+            try {
+                const loadingDiv = document.getElementById('loading');
+                document.getElementById('mainError').classList.add('hidden');
+
+                google.script.run
+                    .withSuccessHandler(data => {
+                        mainData = Array.isArray(data.main) ? data.main : [];
+                        if (mainData.length === 0) {
+                            document.getElementById('mainError').innerText = 'ไม่มีข้อมูลใน Sheet MainSap หรือข้อมูลว่างเปล่า';
+                            document.getElementById('mainError').classList.remove('hidden');
+                        }
+                        setTimeout(() => {
+                            loadingDiv.classList.add('hidden');
+                            displayMainData();
+                        }, 500);
+                    })
+                    .withFailureHandler(error => {
+                        loadingDiv.classList.add('hidden');
+                        document.getElementById('mainError').innerText = 'เกิดข้อผิดพลาดในการโหลดข้อมูล MainSap: ' + error.message;
+                        document.getElementById('mainError').classList.remove('hidden');
+                    })
+                    .getSheetData();
+            } catch (error) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('mainError').innerText = 'ข้อผิดพลาดฝั่งไคลเอนต์: ' + error.message;
+                document.getElementById('mainError').classList.remove('hidden');
+            }
+        }
+
+        function displayMainData(page = currentMainPage) {
+            const tbody = document.getElementById('mainTable');
+            const errorDiv = document.getElementById('mainError');
+            const paginationDiv = document.getElementById('mainPagination');
+            tbody.innerHTML = '';
+            errorDiv.classList.add('hidden');
+
+            if (!mainData || !Array.isArray(mainData) || mainData.length === 0) {
+                errorDiv.innerText = 'ไม่มีข้อมูลใน Sheet MainSap หรือข้อมูลว่างเปล่า';
+                errorDiv.classList.add('hidden');
+                renderPagination('main', 0, page);
+                return;
+            }
+
+            const searchValue = document.getElementById('searchMain').value.toLowerCase();
+            const filteredData = mainData.filter(row => {
+                if (!row || typeof row !== 'object') return false;
+                return !searchValue || searchColumns.some(column => {
+                    const value = row[column];
+                    return (value === null || value === undefined || value === '') 
+                        ? '' : value.toString().toLowerCase().includes(searchValue);
+                });
+            });
+
+            if (filteredData.length === 0) {
+                errorDiv.innerText = searchValue ? 'ไม่พบข้อมูลที่ตรงกับการค้นหา' : 'ไม่มีข้อมูลใน Sheet MainSap';
+                errorDiv.classList.remove('hidden');
+                renderPagination('main', 0, page);
+                return;
+            }
+
+            const start = (page - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const paginatedData = filteredData.slice(start, end);
+
+            paginatedData.forEach(row => {
+                if (!row || typeof row !== 'object') return;
+                if (typeof row.Material !== 'string') row.Material = String(row.Material || '');
+                if (typeof row.Description !== 'string') row.Description = String(row.Description || '');
+                if (typeof row.UrlWeb !== 'string') row.UrlWeb = String(row.UrlWeb || '');
+
+                const tr = document.createElement('tr');
+
+                const tdAction = document.createElement('td');
+                tdAction.className = 'action';
+                const button = document.createElement('button');
+                button.className = 'action-btn';
+                button.textContent = 'เบิกนวนคร';
+                button.onclick = () => openRequestDialog(row.Material || '', row.Description || '');
+                tdAction.appendChild(button);
+                tr.appendChild(tdAction);
+
+                const vibhavadiValue = String(row['วิภาวดี'] || '').trim();
+                const unrestrictedValue = String(row.Unrestricted || '').trim();
+                const tdMaterial = document.createElement('td');
+                tdMaterial.className = 'material';
+                if (vibhavadiValue !== '') tdMaterial.classList.add('material-vibhavadi');
+                else if (unrestrictedValue !== '') tdMaterial.classList.add('material-unrestricted');
+                tdMaterial.textContent = row.Material || '';
+                tr.appendChild(tdMaterial);
+
+                const tdDescription = document.createElement('td');
+                tdDescription.className = 'description';
+                if (vibhavadiValue !== '') tdDescription.classList.add('description-vibhavadi');
+                else if (unrestrictedValue !== '') tdDescription.classList.add('description-unrestricted');
+                tdDescription.textContent = row.Description || '';
+                tr.appendChild(tdDescription);
+
+                const tdUnrestricted = document.createElement('td');
+                tdUnrestricted.className = 'unrestricted';
+                tdUnrestricted.textContent = row.Unrestricted || '';
+                tr.appendChild(tdUnrestricted);
+
+                const tdVibhavadi = document.createElement('td');
+                tdVibhavadi.className = 'vibhavadi';
+                tdVibhavadi.textContent = row['วิภาวดี'] || '';
+                tr.appendChild(tdVibhavadi);
+
+                const tdRebuilt = document.createElement('td');
+                tdRebuilt.className = 'rebuilt';
+                tdRebuilt.textContent = row.Rebuilt || '';
+                tr.appendChild(tdRebuilt);
+
+                const tdNote = document.createElement('td');
+                tdNote.className = 'note';
+                tdNote.textContent = row['หมายเหตุ'] || '';
+                tr.appendChild(tdNote);
+
+                const tdProduct = document.createElement('td');
+                tdProduct.className = 'product';
+                tdProduct.textContent = growth !== '') tdMaterial.classList.add('material-vibhavadi');
+                else if (unrestrictedValue !== '') tdMaterial.classList.add('material-unrestricted');
+                tdMaterial.textContent = row.Material || '';
+                tr.appendChild(tdMaterial);
+
+                const tdDescription = document.createElement('td');
+                tdDescription.className = 'description';
+                if (vibhavadiValue !== '') tdDescription.classList.add('description-vibhavadi');
+                else if (unrestrictedValue !== '') tdDescription.classList.add('description-unrestricted');
+                tdDescription.textContent = row.Description || '';
+                tr.appendChild(tdDescription);
+
+                const tdUnrestricted = document.createElement('td');
+                tdUnrestricted.className = 'unrestricted';
+                tdUnrestricted.textContent = row.Unrestricted || '';
+                tr.appendChild(tdUnrestricted);
+
+                const tdVibhavadi = document.createElement('td');
+                tdVibhavadi.className = 'vibhavadi';
+                tdVibhavadi.textContent = row['วิภาวดี'] || '';
+                tr.appendChild(tdVibhavadi);
+
+                const tdRebuilt = document.createElement('td');
+                tdRebuilt.className = 'rebuilt';
+                tdRebuilt.textContent = row.Rebuilt || '';
+                tr.appendChild(tdRebuilt);
+
+                const tdNote = document.createElement('td');
+                tdNote.className = 'note';
+                tdNote.textContent = row['หมายเหตุ'] || '';
+                tr.appendChild(tdNote);
+
+                const tdProduct = document.createElement('td');
+                tdProduct.className = 'product';
+                tdProduct.textContent = row.Product || '';
+                tr.appendChild(tdProduct);
+
+                const tdImage = document.createElement('td');
+                tdImage.className = 'image';
+                if (row.UrlWeb && isValidUrl(row.UrlWeb)) {
+                    const imgButton = document.createElement('button');
+                    imgButton.className = 'view-image-btn';
+                    imgButton.textContent = 'ดูรูป';
+                    imgButton.onclick = () => window.open(row.UrlWeb, '_blank');
+                    tdImage.appendChild(imgButton);
+                }
+                tr.appendChild(tdImage);
+
+                const tdOcrtaxt = document.createElement('td');
+                tdOcrtaxt.className = 'ocrtaxt';
+                tdOcrtaxt.textContent = row.OCRTAXT || '';
+                tr.appendChild(tdOcrtaxt);
+
+                tbody.appendChild(tr);
+            });
+
+            renderPagination('main', filteredData.length, page);
+        }
+
+        function loadInputHistory() {
+            const employeeIdList = document.getElementById('employeeIdHistory');
+            const teamList = document.getElementById('teamHistory');
+            const contactList = document.getElementById('contactHistory');
+            const callNumberList = document.getElementById('callNumberHistory');
+
+            const employeeIds = JSON.parse(localStorage.getItem('employeeIdHistory') || '[]');
+            const teams = JSON.parse(localStorage.getItem('teamHistory') || '[]');
+            const contacts = JSON.parse(localStorage.getItem('contactHistory') || '[]');
+            const callNumbers = JSON.parse(localStorage.getItem('callNumberHistory') || '[]');
+
+            employeeIdList.innerHTML = employeeIds.map(val => `<option value="${val}">`).join('');
+            teamList.innerHTML = teams.map(val => `<option value="${val}">`).join('');
+            contactList.innerHTML = contacts.map(val => `<option value="${val}">`).join('');
+            callNumberList.innerHTML = callNumbers.map(val => `<option value="${val}">`).join('');
+        }
+
+        function saveInputHistory(employeeId, team, contact, callNumber) {
+            const maxHistory = 10;
+            let employeeIds = JSON.parse(localStorage.getItem('employeeIdHistory') || '[]');
+            let teams = JSON.parse(localStorage.getItem('teamHistory') || '[]');
+            let contacts = JSON.parse(localStorage.getItem('contactHistory') || '[]');
+            let callNumbers = JSON.parse(localStorage.getItem('callNumberHistory') || '[]');
+
+            if (employeeId && !employeeIds.includes(employeeId)) {
+                employeeIds.unshift(employeeId);
+                if (employeeIds.length > maxHistory) employeeIds.pop();
+                localStorage.setItem('employeeIdHistory', JSON.stringify(employeeIds));
+            }
+
+            if (team && !teams.includes(team)) {
+                teams.unshift(team);
+                if (teams.length > maxHistory) teams.pop();
+                localStorage.setItem('teamHistory', JSON.stringify(teams));
+            }
+
+            if (contact && !contacts.includes(contact)) {
+                contacts.unshift(contact);
+                if (contacts.length > maxHistory) contacts.pop();
+                localStorage.setItem('contactHistory', JSON.stringify(contacts));
+            }
+
+            if (callNumber && !callNumbers.includes(callNumber)) {
+                callNumbers.unshift(callNumber);
+                if (callNumbers.length > maxHistory) callNumbers.pop();
+                localStorage.setItem('callNumberHistory', JSON.stringify(callNumbers));
+            }
+        }
+
+        function handleInputFocus(input) {
+            setTimeout(() => {
+                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
+
+        function openRequestDialog(material, description) {
+            const dialog = document.getElementById('requestDialog');
+            if (!dialog) return;
+            dialog.classList.add('active');
+            document.getElementById('dialogMaterial').value = material || '';
+            document.getElementById('dialogDescription').value = description || '';
+            document.getElementById('dialogQuantity').value = '1';
+            document.getElementById('dialogEmployeeId').value = '';
+            document.getElementById('dialogTeam').value = '';
+            document.getElementById('dialogContact').value = '';
+            document.getElementById('dialogCallNumber').value = '';
+            document.getElementById('dialogCallType').value = '';
+            document.getElementById('dialogError').innerText = '';
+            document.getElementById('dialogError').classList.add('hidden');
+            document.getElementById('dialogSuccess').innerText = '';
+            document.getElementById('dialogSuccess').classList.add('hidden');
+            loadInputHistory();
+            dialog.showModal();
+            document.querySelectorAll('#requestDialog input, #requestDialog select').forEach(input => {
+                input.addEventListener('focus', () => handleInputFocus(input));
+            });
+            document.getElementById('dialogQuantity').focus();
+        }
+
+        function closeDialog() {
+            const dialog = document.getElementById('requestDialog');
+            document.getElementById('dialogQuantity').value = '1';
+            document.getElementById('dialogEmployeeId').value = '';
+            document.getElementById('dialogTeam').value = '';
+            document.getElementById('dialogContact').value = '';
+            document.getElementById('dialogCallNumber').value = '';
+            document.getElementById('dialogCallType').value = '';
+            document.getElementById('dialogError').innerText = '';
+            document.getElementById('dialogError').classList.add('hidden');
+            document.getElementById('dialogSuccess').innerText = '';
+            document.getElementById('dialogSuccess').classList.add('hidden');
+            dialog.classList.remove('active');
+            dialog.close();
+        }
+
+        function showSuccessAlert() {
+            const dialog = document.getElementById('successAlert');
+            dialog.classList.add('active');
+            dialog.showModal();
+        }
+
+        function closeSuccessAlert() {
+            const successDialog = document.getElementById('successAlert');
+            const requestDialog = document.getElementById('requestDialog');
+            
+            successDialog.classList.remove('active');
+            successDialog.close();
+            requestDialog.classList.remove('active');
+            requestDialog.close();
+            
+            document.getElementById('dialogQuantity').value = '1';
+            document.getElementById('dialogEmployeeId').value = '';
+            document.getElementById('dialogTeam').value = '';
+            document.getElementById('dialogContact').value = '';
+            document.getElementById('dialogCallNumber').value = '';
+            document.getElementById('dialogCallType').value = '';
+            document.getElementById('dialogError').innerText = '';
+            document.getElementById('dialogError').classList.add('hidden');
+            document.getElementById('dialogSuccess').innerText = '';
+            document.getElementById('dialogSuccess').classList.add('hidden');
+            
+            openTab('requesttoday');
+            
+            reloadRequesttodayIframe();
+            setTimeout(() => reloadRequesttodayIframe(), 1000);
+            setTimeout(() => reloadRequesttodayIframe(), 2000);
+        }
+
+        function submitRequest() {
+            const TRY_COUNT = 3;
+            const material = String(document.getElementById('dialogMaterial').value);
+            const description = String(document.getElementById('dialogDescription').value);
+            const quantity = String(document.getElementById('dialogQuantity').value);
+            const employeeId = String(document.getElementById('dialogEmployeeId').value);
+            const team = String(document.getElementById('dialogTeam').value);
+            const contact = String(document.getElementById('dialogContact').value);
+            const callNumber = String(document.getElementById('dialogCallNumber').value);
+            const callType = String(document.getElementById('dialogCallType').value);
+
+            document.getElementById('dialogError').innerText = '';
+            document.getElementById('dialogError').classList.add('hidden');
+
+            if (!quantity || isNaN(quantity) || parseInt(quantity) <= 0) {
+                document.getElementById('dialogError').innerText = 'จำนวนต้องมากกว่า 0';
+                document.getElementById('dialogError').classList.remove('hidden');
+                return;
+            }
+
+            if (!employeeId || !/^7.{6}$/.test(employeeId)) {
+                document.getElementById('dialogError').innerText = 'รหัสพนักงานต้องขึ้นต้นด้วย 7 และมี 7 ตัวอักษร';
+                document.getElementById('dialogError').classList.remove('hidden');
+                return;
+            }
+
+            if (!team || team.trim() === '') {
+                document.getElementById('dialogError').innerText = 'กรุณากรอกทีม';
+                document.getElementById('dialogError').classList.remove('hidden');
+                return;
+            }
+
+            if (!contact || !/^\d{10}$/.test(contact)) {
+                document.getElementById('dialogError').innerText = 'เบอร์ติดต่อต้องเป็นตัวเลข 10 หลัก';
+                document.getElementById('dialogError').classList.remove('hidden');
+                return;
+            }
+
+            if (!callNumber || callNumber.trim() === '') {
+                document.getElementById('dialogError').innerText = 'กรุณากรอก Call Number';
+                document.getElementById('dialogError').classList.remove('hidden');
+                return;
+            }
+
+            // ตรวจสอบ CallNumber: ขึ้นต้นด้วย 2 ยาว 11 ตัว หรือ ขึ้นต้นด้วย 5 ยาว 7 ตัว (ตัวเลขทั้งหมด)
+            if (!((callNumber.startsWith('2') && callNumber.length === 11) || 
+                  (callNumber.startsWith('5') && callNumber.length === 7 && /^\d+$/.test(callNumber)))) {
+                document.getElementById('dialogError').innerText = 'เลข Call ไม่ถูกต้อง';
+                document.getElementById('dialogError').classList.remove('hidden');
+                return;
+            }
+
+            // ตรวจสอบ CallType: ต้องเป็น I, P, Q, หรือ R
+            if (!callType || !['I', 'P', 'Q', 'R'].includes(callType)) {
+                document.getElementById('dialogError').innerText = 'กรุณาเลือก Call Type ที่ถูกต้อง (I, P, Q, R)';
+                document.getElementById('dialogError').classList.remove('hidden');
+                return;
+            }
+
+            const requestData = { material, description, quantity, employeeId, team, contact, callNumber, callType, tryCount: TRY_COUNT };
+            console.log('Sending requestData:', requestData);
+
+            google.script.run
+                .withSuccessHandler(response => {
+                    console.log('Save request success:', response);
+                    saveInputHistory(employeeId, team, contact, callNumber);
+                    showSuccessAlert();
+                })
+                .withFailureHandler(error => {
+                    console.error('Save request failed:', error);
+                    document.getElementById('dialogError').innerText = 'เกิดข้อผิดพลาดในการบันทึก: ' + error.message;
+                    document.getElementById('dialogError').classList.remove('hidden');
+                })
+                .saveRequest(requestData);
+        }
+
+        function renderPagination(tab, totalRows, currentPage) {
+            const paginationDiv = document.getElementById(`${tab}Pagination`);
+            paginationDiv.innerHTML = '';
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+
+            if (totalRows === 0) {
+                paginationDiv.innerText = 'ไม่มีข้อมูลสำหรับแสดงหน้า';
+                paginationDiv.className = 'no-data-message';
+                return;
+            }
+
+            const firstButton = document.createElement('button');
+            firstButton.innerText = '<<';
+            firstButton.disabled = currentPage === 1;
+            firstButton.onclick = () => {
+                currentMainPage = 1;
+                displayMainData();
+            };
+            paginationDiv.appendChild(firstButton);
+
+            const prevButton = document.createElement('button');
+            prevButton.innerText = '<';
+            prevButton.disabled = currentPage === 1;
+            prevButton.onclick = () => {
+                currentMainPage--;
+                displayMainData();
+            };
+            paginationDiv.appendChild(prevButton);
+
+            const pageNumbers = [];
+            const maxPages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxPages / 2));
+            let endPage = Math.min(totalPages, startPage + maxPages - 1);
+            if (endPage - startPage + 1 < maxPages) {
+                startPage = Math.max(1, endPage - maxPages + 1);
+            }
+            for (let i = startPage; i <= endPage; i++) {
+                pageNumbers.push(i);
+            }
+
+            pageNumbers.forEach(page => {
+                const pageButton = document.createElement('button');
+                pageButton.innerText = page;
+                pageButton.classList.toggle Registers the page navigation buttons for the pagination system, handling page changes and rendering page numbers based on the total rows and current page.
+                pageButton.classList.toggle('active', page === currentPage);
+                pageButton.disabled = page === currentPage;
+                pageButton.onclick = () => {
+                    currentMainPage = page;
+                    displayMainData();
+                };
+                paginationDiv.appendChild(pageButton);
+            });
+
+            const nextButton = document.createElement('button');
+            nextButton.innerText = '>';
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.onclick = () => {
+                currentMainPage++;
+                displayMainData();
+            };
+            paginationDiv.appendChild(nextButton);
+
+            const lastButton = document.createElement('button');
+            lastButton.innerText = '>>';
+            lastButton.disabled = currentPage === totalPages;
+            lastButton.onclick = () => {
+                currentMainPage = totalPages;
+                displayMainData();
+            };
+            paginationDiv.appendChild(lastButton);
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        document.getElementById('searchMain').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                currentMainPage = 1;
+                displayMainData();
+            }
+        });
+
+        window.addEventListener('resize', forceFullScreen);
+        document.addEventListener('DOMContentLoaded', () => {
+            if (isInAppBrowser()) {
+                document.getElementById('browserPrompt月中
+            }
+            forceFullScreen();
+            openTab('requesttoday');
+        });
+    </script>
+</body>
 </html>
-
